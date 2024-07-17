@@ -4,16 +4,16 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <qrcode.h> // Includi la libreria QR code
+#include <qrcode.h>  // Include the QR code library
 
 // Definizione delle costanti per la matrice dei pulsanti
 const int ROWS = 4;
 const int COLS = 3;
 
 // Definizione dei pin di collegamento
-const int rowPins[ROWS] = { 9, 8, 7, 6 }; // Riga 1, Riga 2, Riga 3, Riga 4
-const int colPins[COLS] = { 10, 16, 14 }; // Colonna 1, Colonna 2, Colonna 3
-const int ctrlPin = A2; // Pin per il pulsante di controllo
+const int rowPins[ROWS] = { 9, 8, 7, 6 };  // Riga 1, Riga 2, Riga 3, Riga 4
+const int colPins[COLS] = { 10, 16, 14 };  // Colonna 1, Colonna 2, Colonna 3
+const int ctrlPin = A2;                    // Pin per il pulsante di controllo
 
 const int keymap[ROWS][COLS] = {
   { 0, 4, 8 },
@@ -21,7 +21,6 @@ const int keymap[ROWS][COLS] = {
   { 2, 6, 10 },
   { 3, 7, 11 },
 };
-
 // Stato precedente dei pulsanti
 int lastButtonState[ROWS][COLS] = {
   { HIGH, HIGH, HIGH },
@@ -30,7 +29,7 @@ int lastButtonState[ROWS][COLS] = {
   { HIGH, HIGH, HIGH }
 };
 
-// Ingressi del Rotary Encoder
+// Rotary Encoder Inputs
 #define CLK 5
 #define DT 4
 #define SW 15
@@ -41,7 +40,7 @@ int lastStateCLK;
 String currentDir = "";
 unsigned long lastButtonPress = 0;
 
-#define OLED_RESET 4 // Pin di reset per alcuni display
+#define OLED_RESET 4  // Pin di reset per alcuni display
 Adafruit_SSD1306 display(OLED_RESET);
 
 #define btchangeencoder A0
@@ -87,19 +86,19 @@ void setup() {
   // Inizializzazione del pin per il pulsante di controllo come input con pull-up
   pinMode(ctrlPin, INPUT_PULLUP);
 
-  // Configura i pin dell'encoder come input
+  // Set encoder pins as inputs
   pinMode(CLK, INPUT);
   pinMode(DT, INPUT);
   pinMode(SW, INPUT_PULLUP);
 
-  // Configura il monitor seriale
+  // Setup Serial Monitor
   Serial.begin(9600);
 
-  // Leggi lo stato iniziale di CLK
+  // Read the initial state of CLK
   lastStateCLK = digitalRead(CLK);
 
   // Inizializzazione del display OLED
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C); // Indirizzo I2C del display, può variare
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // Indirizzo I2C del display, può variare
 
   // Imposta il testo per il display
   display.setTextSize(1);
@@ -118,7 +117,7 @@ void loop() {
   ctrlPressed = digitalRead(ctrlPin) == LOW;
 
   matrixPressed = digitalRead(mappamatrix) == LOW;
-  encoderPressed = digitalRead(mappaencoder);
+  encoderPressed = digitalRead(mappaencoder) == LOW;
 
   // Scansiona i pulsanti
   for (col = 0; col < COLS; col++) {
@@ -146,13 +145,14 @@ void loop() {
 
   ctrlPressed ? Keyboard.press(KEY_LEFT_CTRL) : Keyboard.releaseAll();
 
-  // Leggi lo stato attuale di CLK
+  // Read the current state of CLK
   currentStateCLK = digitalRead(CLK);
 
-  // Se lo stato precedente e attuale di CLK sono diversi, è avvenuto un impulso
-  // Reagisci solo a 1 cambio di stato per evitare conteggi doppi
+  // If last and current state of CLK are different, then pulse occurred
+  // React to only 1 state change to avoid double count
   if (currentStateCLK != lastStateCLK && currentStateCLK == 1) {
-    // Se lo stato di DT è diverso da quello di CLK, l'encoder ruota in senso antiorario, quindi decrementa
+    // If the DT state is different than the CLK state then
+    // the encoder is rotating CCW so decrement
     if (digitalRead(DT) != currentStateCLK) {
 
       if (valueEncoder == 0) {
@@ -177,7 +177,7 @@ void loop() {
 
           Keyboard.press(HID_KEYBOARD_F13);
         } else {
-          // L'encoder ruota in senso orario, quindi incrementa
+          // Encoder is rotating CW so increment
           Keyboard.press(KEY_DOWN_ARROW);
         }
       } else if (valueEncoder == 1) {
@@ -192,20 +192,28 @@ void loop() {
     Keyboard.releaseAll();
   }
 
-  // Ricorda l'ultimo stato di CLK
+  // Remember last CLK state
   lastStateCLK = currentStateCLK;
 
-  // Leggi lo stato del pulsante
+  // Read the button state
   int btnState = digitalRead(SW);
 
-  // Se rilevi un segnale LOW, il pulsante è premuto
+  // If we detect LOW signal, button is pressed
   if (btnState == LOW) {
-    // Se sono passati 50ms dall'ultimo impulso LOW, significa che il pulsante è stato premuto, rilasciato e premuto di nuovo
+    // If 50ms have passed since last LOW pulse, it means that the
+    // button has been pressed, released and pressed again
     if (millis() - lastButtonPress > 10) {
 
       if (valueEncoder == 0) {
+        if (ctrlPressed) {
+         Keyboard.releaseAll();
+         Keyboard.press(KEY_ENTER);
+         delay(300);
+         Keyboard.releaseAll();
+        }else 
         Keyboard.press(HID_KEYBOARD_F2);
         Keyboard.releaseAll();
+
       } else if (valueEncoder == 1) {
 
       } else if (valueEncoder == 2) {
@@ -214,15 +222,16 @@ void loop() {
         Keyboard.releaseAll();
       }
     }
-    // Ricorda l'ultimo evento di pressione del pulsante
+    // Remember last button press event
     lastButtonPress = millis();
     Keyboard.releaseAll();
   }
 
-  // Inserisci un leggero ritardo per aiutare il debounce della lettura
+  // Put in a slight delay to help debounce the reading
   delay(1);
   encodermap();
 }
+
 
 void encodermap() {
   if (encoderPressed == LOW) {
@@ -247,7 +256,7 @@ void encodermap() {
         delay(8000);
         oled();
       }
-      delay(30); // Piccolo ritardo per evitare sovraccarico della CPU
+      delay(30);  // Piccolo ritardo per evitare sovraccarico della CPU
       Serial.println("loop");
     }
   }
@@ -412,21 +421,20 @@ void send_command() {
       }
   }
 }
-
 void oled() {
   display.clearDisplay();
   display.setCursor(0, 0);
   display.println("       MacroPad");
   display.println("---------------------");
-  display.print("Matrice: "); // Aggiungi qui lo stato della matrice
-  display.println(mappamatrixSTR); // Sostituisci con il tuo stato attuale della matrice
-  display.print("Encoder: "); // Aggiungi qui lo stato dell'encoder
-  display.println(mappaencoderSTR); // Sostituisci con il tuo stato attuale dell'encoder
+  display.print("Matrice: ");        // Aggiungi qui lo stato della matrice
+  display.println(mappamatrixSTR);   // Sostituisci con il tuo stato attuale della matrice
+  display.print("Encoder: ");        // Aggiungi qui lo stato dell'encoder
+  display.println(mappaencoderSTR);  // Sostituisci con il tuo stato attuale dell'encoder
   display.display();
 }
 
 void displayQRCode() {
-  const char* qrData = "https://github.com/edoxxx/MacroPad"; // Sostituisci con il tuo URL
+  const char* qrData = "https://github.com/edoxxx/MacroPad";  // Sostituisci con il tuo URL
   const int qrVersion = 3;
   const int qrSize = 40;
   QRCode qrcode;
